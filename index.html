@@ -100,15 +100,24 @@
         }
 
         /**
-         * Introduces 0–6 deviations into baseStr.
+         * Introduces deviations into baseStr using weighted probability.
+         * - With ~80% chance, selects a deviation count between 0 and 2.
+         * - With ~20% chance, selects a deviation count between 3 and 5.
          * Returns an object with the deviated string and the deviation count.
          */
         function createDeviations(baseStr) {
           const len = baseStr.length;
-          const deviationCount = Math.floor(Math.random() * 7); // 0 to 6
+          let deviationCount;
+          const r = Math.random();
+          if (r < 0.8) {
+            // 80% chance: choose 0-2 deviations.
+            deviationCount = Math.floor(Math.random() * 3); // 0, 1, or 2
+          } else {
+            // 20% chance: choose 3-5 deviations.
+            deviationCount = 3 + Math.floor(Math.random() * 3); // 3, 4, or 5
+          }
           let rightArr = baseStr.split("");
           let indicesChanged = [];
-
           while (indicesChanged.length < deviationCount) {
             const index = Math.floor(Math.random() * len);
             if (!indicesChanged.includes(index)) {
@@ -198,34 +207,27 @@
             if ($userSelected.length) {
               const userAnswer = $userSelected.data("value");
               if (userAnswer === correct) {
-                // Correct selection: highlight green.
+                // Correct selection: mark green.
                 $userSelected
                   .removeClass("btn-outline-primary")
                   .addClass("btn-success");
-                if (correct === "3+") {
-                  $userSelected.append(` <small>(actual: ${actual})</small>`);
-                }
               } else {
-                // Wrong selection: highlight red and show correct answer in green.
+                // Wrong selection: mark user's selection red and the correct button green.
                 $userSelected
                   .removeClass("btn-outline-primary")
                   .addClass("btn-danger");
                 $correctBtn
                   .removeClass("btn-outline-primary")
                   .addClass("btn-success");
-                if (correct === "3+") {
-                  $correctBtn.append(` <small>(actual: ${actual})</small>`);
-                }
               }
             } else {
               // No selection: just highlight the correct answer.
               $correctBtn
                 .removeClass("btn-outline-primary")
                 .addClass("btn-success");
-              if (correct === "3+") {
-                $correctBtn.append(` <small>(actual: ${actual})</small>`);
-              }
             }
+            // Remove the "active" class for this question.
+            $question.find(".answer-btn").removeClass("active");
           });
 
           // Disable further changes.
