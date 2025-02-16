@@ -13,21 +13,22 @@
     <style>
       .monocolumn {
         font-family: "Courier New", Courier, "Lucida Console", monospace;
-        font-size: 1.25rem; /* Increased font size */
-        white-space: pre; /* Preserve line breaks */
+        font-size: 1.25rem; /* Increased font size for better readability */
+        white-space: pre; /* Respect newlines exactly */
         margin: 0;
         padding: 0;
         overflow-x: hidden; /* Prevent horizontal scrolling */
       }
       .answer-btn.active {
         background-color: #cce5ff;
+        color: #007bff;
       }
     </style>
   </head>
   <body>
     <div class="container my-4">
       <h1 class="mb-4 text-center">Deviation Scanning Test</h1>
-      <!-- Questions will be dynamically inserted here -->
+      <!-- Questions will be inserted here -->
       <div id="questionsContainer"></div>
       <!-- Submit Button -->
       <div class="my-4">
@@ -58,8 +59,8 @@
         }
 
         /**
-         * Generate a random string of length between minLen and maxLen.
-         * Here we limit maxLen to 30 so each string is short enough to avoid horizontal scroll.
+         * Generates a random string whose length is between minLen and maxLen.
+         * Here, the total length is between 20 and 27 characters.
          */
         function generateRandomString(minLen, maxLen) {
           const length =
@@ -72,7 +73,7 @@
         }
 
         /**
-         * Escape special HTML characters so they appear literally.
+         * Escapes special HTML characters so they display literally.
          */
         function escapeHtml(str) {
           return str
@@ -84,24 +85,27 @@
         }
 
         /**
-         * Split the string into exactly two lines at the halfway point.
-         * This ensures that both columns break at the same character index.
+         * Splits the string into exactly three rows.
+         * The first two rows will have Math.ceil(totalLength/3) characters,
+         * and the third row will have the remaining characters.
+         * Since total length is between 20 and 27, no row will exceed 9 characters.
          */
-        function splitIntoTwoLines(str) {
-          const len = str.length;
-          const mid = Math.ceil(len / 2); // if odd, first line gets 1 extra char
-          const firstLine = str.slice(0, mid);
-          const secondLine = str.slice(mid);
-          return firstLine + "\n" + secondLine;
+        function splitIntoThreeLines(str) {
+          const L = str.length;
+          const rowLen = Math.ceil(L / 3);
+          const first = str.slice(0, rowLen);
+          const second = str.slice(rowLen, rowLen * 2);
+          const third = str.slice(rowLen * 2);
+          return first + "\n" + second + "\n" + third;
         }
 
         /**
-         * Introduce 0–6 random deviations in baseStr.
-         * Returns an object: { deviatedStr, deviationCount }
+         * Introduces 0–6 deviations into baseStr.
+         * Returns an object with the deviated string and the deviation count.
          */
         function createDeviations(baseStr) {
           const len = baseStr.length;
-          const deviationCount = Math.floor(Math.random() * 7);
+          const deviationCount = Math.floor(Math.random() * 7); // 0 to 6
           let rightArr = baseStr.split("");
           let indicesChanged = [];
 
@@ -116,23 +120,25 @@
               rightArr[index] = newChar;
             }
           }
-
           return {
             deviatedStr: rightArr.join(""),
             deviationCount: deviationCount,
           };
         }
 
-        // Generate all questions
+        // Generate all questions.
         for (let i = 1; i <= numQuestions; i++) {
-          const baseStr = generateRandomString(20, 30);
+          // Generate a base string between 20 and 27 characters.
+          const baseStr = generateRandomString(20, 27);
+          // Create deviations in the right column string.
           const { deviatedStr, deviationCount } = createDeviations(baseStr);
+          // Determine the correct answer: if deviations >= 3, answer is "3+", else the exact count.
           const correctAnswer =
             deviationCount >= 3 ? "3+" : deviationCount.toString();
 
-          // Force same line breaks for both columns.
-          const baseStrTwoLines = splitIntoTwoLines(baseStr);
-          const deviatedStrTwoLines = splitIntoTwoLines(deviatedStr);
+          // Split both strings into exactly three lines.
+          const baseStrThreeLines = splitIntoThreeLines(baseStr);
+          const deviatedStrThreeLines = splitIntoThreeLines(deviatedStr);
 
           const $card = $(`
           <div class="card mb-3 question" data-correct="${correctAnswer}" data-actual="${deviationCount}">
@@ -140,11 +146,11 @@
               <h5 class="card-title">Question ${i}</h5>
               <div class="row mb-3">
                 <div class="col-6">
-                  <pre class="monocolumn">${escapeHtml(baseStrTwoLines)}</pre>
+                  <pre class="monocolumn">${escapeHtml(baseStrThreeLines)}</pre>
                 </div>
                 <div class="col-6">
                   <pre class="monocolumn">${escapeHtml(
-                    deviatedStrTwoLines
+                    deviatedStrThreeLines
                   )}</pre>
                 </div>
               </div>
@@ -171,19 +177,19 @@
         // Handle answer selection.
         $(document).on("click", ".answer-btn", function () {
           const $this = $(this);
+          // Remove previous active selection in this question.
           $this.closest(".question").find(".answer-btn").removeClass("active");
           $this.addClass("active");
         });
 
-        // Handle submission.
+        // On submission, highlight correct answers in green and wrong selections in red.
         $("#submitBtn").click(function () {
-          // Scroll to the top.
           $("html, body").animate({ scrollTop: 0 }, "fast");
 
           $(".question").each(function () {
             const $question = $(this);
-            const correct = $question.data("correct");
-            const actual = $question.data("actual");
+            const correct = $question.data("correct"); // "0", "1", "2", or "3+"
+            const actual = $question.data("actual"); // actual deviation count
             const $userSelected = $question.find(".answer-btn.active");
             const $correctBtn = $question.find(
               `.answer-btn[data-value="${correct}"]`
@@ -192,27 +198,27 @@
             if ($userSelected.length) {
               const userAnswer = $userSelected.data("value");
               if (userAnswer === correct) {
-                // User answered correctly: mark in green.
+                // Correct selection: highlight green.
                 $userSelected
                   .removeClass("btn-outline-primary")
-                  .removeClass("active")
                   .addClass("btn-success");
+                if (correct === "3+") {
+                  $userSelected.append(` <small>(actual: ${actual})</small>`);
+                }
               } else {
-                // User answered incorrectly: mark selection red and show correct answer in green.
+                // Wrong selection: highlight red and show correct answer in green.
                 $userSelected
                   .removeClass("btn-outline-primary")
-                  .removeClass("active")
                   .addClass("btn-danger");
                 $correctBtn
                   .removeClass("btn-outline-primary")
-                  .removeClass("active")
                   .addClass("btn-success");
                 if (correct === "3+") {
                   $correctBtn.append(` <small>(actual: ${actual})</small>`);
                 }
               }
             } else {
-              // No answer was selected: still show the correct answer in green.
+              // No selection: just highlight the correct answer.
               $correctBtn
                 .removeClass("btn-outline-primary")
                 .addClass("btn-success");
@@ -222,7 +228,7 @@
             }
           });
 
-          // Disable further selection.
+          // Disable further changes.
           $(".answer-btn").prop("disabled", true);
           $(this).prop("disabled", true);
         });
