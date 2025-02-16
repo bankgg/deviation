@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Mobile-first meta tag -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deviation Scanning Test</title>
+    <!-- Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <style>
+      .monocolumn {
+        font-family: "Courier New", Courier, "Lucida Console", monospace;
+        font-size: 1.25rem; /* Increased font size */
+        white-space: pre; /* Preserve line breaks */
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden; /* Prevent horizontal scrolling */
+      }
+      .answer-btn.active {
+        background-color: #cce5ff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container my-4">
+      <h1 class="mb-4 text-center">Deviation Scanning Test</h1>
+      <!-- Questions will be dynamically inserted here -->
+      <div id="questionsContainer"></div>
+      <!-- Submit Button -->
+      <div class="my-4">
+        <button id="submitBtn" class="btn btn-primary btn-lg btn-block">
+          Submit Answers
+        </button>
+      </div>
+    </div>
+
+    <!-- jQuery and Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+      $(document).ready(function () {
+        const numQuestions = 20;
+        const $container = $("#questionsContainer");
+
+        /**
+         * Returns a random printable ASCII character (from '!' (33) to '~' (126)).
+         */
+        function randomChar() {
+          const asciiStart = 33,
+            asciiEnd = 126;
+          const code =
+            Math.floor(Math.random() * (asciiEnd - asciiStart + 1)) +
+            asciiStart;
+          return String.fromCharCode(code);
+        }
+
+        /**
+         * Generate a random string of length between minLen and maxLen.
+         * Here we limit maxLen to 30 so each string is short enough to avoid horizontal scroll.
+         */
+        function generateRandomString(minLen, maxLen) {
+          const length =
+            Math.floor(Math.random() * (maxLen - minLen + 1)) + minLen;
+          let str = "";
+          for (let i = 0; i < length; i++) {
+            str += randomChar();
+          }
+          return str;
+        }
+
+        /**
+         * Escape special HTML characters so they appear literally.
+         */
+        function escapeHtml(str) {
+          return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+        }
+
+        /**
+         * Split the string into exactly two lines at the halfway point.
+         * This ensures that both columns break at the same character index.
+         */
+        function splitIntoTwoLines(str) {
+          const len = str.length;
+          const mid = Math.ceil(len / 2); // if odd, first line gets 1 extra char
+          const firstLine = str.slice(0, mid);
+          const secondLine = str.slice(mid);
+          return firstLine + "\n" + secondLine;
+        }
+
+        /**
+         * Introduce 0–6 random deviations in baseStr.
+         * Returns an object: { deviatedStr, deviationCount }
+         */
+        function createDeviations(baseStr) {
+          const len = baseStr.length;
+          const deviationCount = Math.floor(Math.random() * 7);
+          let rightArr = baseStr.split("");
+          let indicesChanged = [];
+
+          while (indicesChanged.length < deviationCount) {
+            const index = Math.floor(Math.random() * len);
+            if (!indicesChanged.includes(index)) {
+              indicesChanged.push(index);
+              let newChar;
+              do {
+                newChar = randomChar();
+              } while (newChar === rightArr[index]);
+              rightArr[index] = newChar;
+            }
+          }
+
+          return {
+            deviatedStr: rightArr.join(""),
+            deviationCount: deviationCount,
+          };
+        }
+
+        // Generate all questions
+        for (let i = 1; i <= numQuestions; i++) {
+          const baseStr = generateRandomString(20, 30);
+          const { deviatedStr, deviationCount } = createDeviations(baseStr);
+          const correctAnswer =
+            deviationCount >= 3 ? "3+" : deviationCount.toString();
+
+          // Force same line breaks for both columns.
+          const baseStrTwoLines = splitIntoTwoLines(baseStr);
+          const deviatedStrTwoLines = splitIntoTwoLines(deviatedStr);
+
+          const $card = $(`
+          <div class="card mb-3 question" data-correct="${correctAnswer}" data-actual="${deviationCount}">
+            <div class="card-body">
+              <h5 class="card-title">Question ${i}</h5>
+              <div class="row mb-3">
+                <div class="col-6">
+                  <pre class="monocolumn">${escapeHtml(baseStrTwoLines)}</pre>
+                </div>
+                <div class="col-6">
+                  <pre class="monocolumn">${escapeHtml(
+                    deviatedStrTwoLines
+                  )}</pre>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-3 p-1">
+                  <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="0">0</button>
+                </div>
+                <div class="col-3 p-1">
+                  <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="1">1</button>
+                </div>
+                <div class="col-3 p-1">
+                  <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="2">2</button>
+                </div>
+                <div class="col-3 p-1">
+                  <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="3+">3+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `);
+          $container.append($card);
+        }
+
+        // Handle answer selection.
+        $(document).on("click", ".answer-btn", function () {
+          const $this = $(this);
+          $this.closest(".question").find(".answer-btn").removeClass("active");
+          $this.addClass("active");
+        });
+
+        // Handle submission.
+        $("#submitBtn").click(function () {
+          // Scroll to the top.
+          $("html, body").animate({ scrollTop: 0 }, "fast");
+
+          $(".question").each(function () {
+            const $question = $(this);
+            const correct = $question.data("correct");
+            const actual = $question.data("actual");
+            const $userSelected = $question.find(".answer-btn.active");
+            const $correctBtn = $question.find(
+              `.answer-btn[data-value="${correct}"]`
+            );
+
+            if ($userSelected.length) {
+              const userAnswer = $userSelected.data("value");
+              if (userAnswer === correct) {
+                // User answered correctly: mark in green.
+                $userSelected
+                  .removeClass("btn-outline-primary")
+                  .removeClass("active")
+                  .addClass("btn-success");
+              } else {
+                // User answered incorrectly: mark selection red and show correct answer in green.
+                $userSelected
+                  .removeClass("btn-outline-primary")
+                  .removeClass("active")
+                  .addClass("btn-danger");
+                $correctBtn
+                  .removeClass("btn-outline-primary")
+                  .removeClass("active")
+                  .addClass("btn-success");
+                if (correct === "3+") {
+                  $correctBtn.append(` <small>(actual: ${actual})</small>`);
+                }
+              }
+            } else {
+              // No answer was selected: still show the correct answer in green.
+              $correctBtn
+                .removeClass("btn-outline-primary")
+                .addClass("btn-success");
+              if (correct === "3+") {
+                $correctBtn.append(` <small>(actual: ${actual})</small>`);
+              }
+            }
+          });
+
+          // Disable further selection.
+          $(".answer-btn").prop("disabled", true);
+          $(this).prop("disabled", true);
+        });
+      });
+    </script>
+  </body>
+</html>
