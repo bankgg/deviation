@@ -13,11 +13,12 @@
     <style>
       .monocolumn {
         font-family: "Courier New", Courier, "Lucida Console", monospace;
-        font-size: 1.25rem; /* Increased font size for better readability */
-        white-space: pre; /* Respect newlines exactly */
+        font-size: 1.1rem; /* Reduced font size */
+        white-space: nowrap; /* Single row display */
         margin: 0;
-        padding: 0;
-        overflow-x: hidden; /* Prevent horizontal scrolling */
+        padding: 0.5rem; /* Added padding for easier touch scrolling */
+        overflow-x: auto; /* Allow horizontal scrolling */
+        height: 6rem; /* Increased height for more vertical touch area */
       }
       .answer-btn.active {
         background-color: #cce5ff;
@@ -35,6 +36,44 @@
         <button id="submitBtn" class="btn btn-primary btn-lg btn-block">
           Submit Answers
         </button>
+      </div>
+    </div>
+
+    <!-- Modal for Result -->
+    <div
+      class="modal fade"
+      id="resultModal"
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="resultModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="resultModalLabel">Test Results</h5>
+            <button
+              type="button"
+              class="close"
+              data-dismiss="modal"
+              aria-label="Close"
+            >
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <!-- Result text will be set here -->
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-dismiss="modal"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -60,7 +99,7 @@
 
         /**
          * Generates a random string whose length is between minLen and maxLen.
-         * Here, the total length is between 20 and 27 characters.
+         * Here, the total length is between 25 and 35 characters.
          */
         function generateRandomString(minLen, maxLen) {
           const length =
@@ -82,21 +121,6 @@
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#39;");
-        }
-
-        /**
-         * Splits the string into exactly three rows.
-         * The first two rows will have Math.ceil(totalLength/3) characters,
-         * and the third row will have the remaining characters.
-         * Since total length is between 20 and 27, no row will exceed 9 characters.
-         */
-        function splitIntoThreeLines(str) {
-          const L = str.length;
-          const rowLen = Math.ceil(L / 3);
-          const first = str.slice(0, rowLen);
-          const second = str.slice(rowLen, rowLen * 2);
-          const third = str.slice(rowLen * 2);
-          return first + "\n" + second + "\n" + third;
         }
 
         /**
@@ -137,17 +161,17 @@
 
         // Generate all questions.
         for (let i = 1; i <= numQuestions; i++) {
-          // Generate a base string between 20 and 27 characters.
-          const baseStr = generateRandomString(20, 27);
+          // Generate a base string between 25 and 35 characters.
+          const baseStr = generateRandomString(25, 35);
           // Create deviations in the right column string.
           const { deviatedStr, deviationCount } = createDeviations(baseStr);
           // Determine the correct answer: if deviations >= 3, answer is "3+", else the exact count.
           const correctAnswer =
             deviationCount >= 3 ? "3+" : deviationCount.toString();
 
-          // Split both strings into exactly three lines.
-          const baseStrThreeLines = splitIntoThreeLines(baseStr);
-          const deviatedStrThreeLines = splitIntoThreeLines(deviatedStr);
+          // Single row display for both columns.
+          const baseStrOneLine = baseStr;
+          const deviatedStrOneLine = deviatedStr;
 
           const $card = $(`
           <div class="card mb-3 question" data-correct="${correctAnswer}" data-actual="${deviationCount}">
@@ -155,11 +179,14 @@
               <h5 class="card-title">Question ${i}</h5>
               <div class="row mb-3">
                 <div class="col-6">
-                  <pre class="monocolumn">${escapeHtml(baseStrThreeLines)}</pre>
+                  <!-- Left column: right-aligned -->
+                  <pre class="monocolumn" style="text-align: right;">${escapeHtml(
+                    baseStrOneLine
+                  )}</pre>
                 </div>
                 <div class="col-6">
                   <pre class="monocolumn">${escapeHtml(
-                    deviatedStrThreeLines
+                    deviatedStrOneLine
                   )}</pre>
                 </div>
               </div>
@@ -179,9 +206,25 @@
               </div>
             </div>
           </div>
-        `);
+          `);
           $container.append($card);
         }
+
+        // Synchronize horizontal scrolling for each question's two columns.
+        // Listen to both scroll and touchmove events.
+        $(document).on(
+          "scroll touchmove",
+          ".question .monocolumn",
+          function () {
+            var $this = $(this);
+            var scrollLeft = $this.scrollLeft();
+            var $question = $this.closest(".question");
+            // Use requestAnimationFrame for smoother syncing.
+            window.requestAnimationFrame(function () {
+              $question.find(".monocolumn").not($this).scrollLeft(scrollLeft);
+            });
+          }
+        );
 
         // Handle answer selection.
         $(document).on("click", ".answer-btn", function () {
@@ -195,10 +238,11 @@
         $("#submitBtn").click(function () {
           $("html, body").animate({ scrollTop: 0 }, "fast");
 
+          let correctCount = 0;
+
           $(".question").each(function () {
             const $question = $(this);
             const correct = $question.data("correct"); // "0", "1", "2", or "3+"
-            const actual = $question.data("actual"); // actual deviation count
             const $userSelected = $question.find(".answer-btn.active");
             const $correctBtn = $question.find(
               `.answer-btn[data-value="${correct}"]`
@@ -211,6 +255,7 @@
                 $userSelected
                   .removeClass("btn-outline-primary")
                   .addClass("btn-success");
+                correctCount++;
               } else {
                 // Wrong selection: mark user's selection red and the correct button green.
                 $userSelected
@@ -233,6 +278,12 @@
           // Disable further changes.
           $(".answer-btn").prop("disabled", true);
           $(this).prop("disabled", true);
+
+          // Calculate percentage and show results using the modal.
+          const percentage = Math.round((correctCount / numQuestions) * 100);
+          const resultMsg = `You answered ${correctCount}/${numQuestions} correctly (${percentage}%).`;
+          $("#resultModal .modal-body").text(resultMsg);
+          $("#resultModal").modal("show");
         });
       });
     </script>
