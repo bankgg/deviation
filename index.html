@@ -10,35 +10,29 @@
       rel="stylesheet"
       href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
     />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Mono&family=Rubik:ital,wght@0,300;1,300&display=swap"
+      rel="stylesheet"
+    />
     <style>
-      /* Character containers (pre elements) are now smaller in height */
+      /* Character containers (pre elements) – reduced height, with light borders */
       .monocolumn {
-        font-family: "Courier New", Courier, "Lucida Console", monospace;
-        font-size: 1.1rem; /* Reduced font size */
-        white-space: nowrap; /* Single row display */
+        font-family: "Roboto Mono", "Courier New", monospace;
+        font-size: 1rem;
+        white-space: nowrap;
         margin: 0;
-        padding: 0.25rem; /* Reduced padding */
-        overflow-x: auto; /* Allow horizontal scrolling */
-        height: 2.5rem; /* Reduced height for character display */
+        padding: 0.25rem;
+        overflow-x: auto;
+        height: 2.5rem;
         border: 1px solid #ccc; /* light border */
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: none;
       }
       .answer-btn.active {
         background-color: #cce5ff;
         color: #007bff;
-      }
-      /* New touchpad area styling */
-      .touchpad {
-        width: 100%;
-        height: 4rem; /* Big area for easier touch scrolling */
-        overflow-x: auto;
-        background-color: #f8f9fa; /* Light background to indicate the area */
-        border: 1px solid #dee2e6;
-        margin-top: 0.5rem;
-      }
-      .touchpad-inner {
-        /* Set a fixed large width to ensure horizontal scrolling */
-        width: 800px;
-        height: 100%;
       }
     </style>
   </head>
@@ -98,12 +92,10 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script>
       $(document).ready(function () {
-        const numQuestions = 20;
+        const numQuestions = 30;
         const $container = $("#questionsContainer");
 
-        /**
-         * Returns a random printable ASCII character (from '!' (33) to '~' (126)).
-         */
+        // --- Utility Functions ---
         function randomChar() {
           const asciiStart = 33,
             asciiEnd = 126;
@@ -113,10 +105,6 @@
           return String.fromCharCode(code);
         }
 
-        /**
-         * Generates a random string whose length is between minLen and maxLen.
-         * Here, the total length is between 25 and 35 characters.
-         */
         function generateRandomString(minLen, maxLen) {
           const length =
             Math.floor(Math.random() * (maxLen - minLen + 1)) + minLen;
@@ -127,9 +115,6 @@
           return str;
         }
 
-        /**
-         * Escapes special HTML characters so they display literally.
-         */
         function escapeHtml(str) {
           return str
             .replace(/&/g, "&amp;")
@@ -139,22 +124,14 @@
             .replace(/'/g, "&#39;");
         }
 
-        /**
-         * Introduces deviations into baseStr using weighted probability.
-         * - With ~80% chance, selects a deviation count between 0 and 2.
-         * - With ~20% chance, selects a deviation count between 3 and 5.
-         * Returns an object with the deviated string and the deviation count.
-         */
         function createDeviations(baseStr) {
           const len = baseStr.length;
           let deviationCount;
           const r = Math.random();
           if (r < 0.8) {
-            // 80% chance: choose 0-2 deviations.
-            deviationCount = Math.floor(Math.random() * 3);
+            deviationCount = Math.floor(Math.random() * 3); // 0,1,or2
           } else {
-            // 20% chance: choose 3-5 deviations.
-            deviationCount = 3 + Math.floor(Math.random() * 3);
+            deviationCount = 3 + Math.floor(Math.random() * 3); // 3,4,or5
           }
           let rightArr = baseStr.split("");
           let indicesChanged = [];
@@ -175,13 +152,13 @@
           };
         }
 
-        // Generate all questions.
+        // --- Generate Questions ---
         for (let i = 1; i <= numQuestions; i++) {
-          const baseStr = generateRandomString(25, 35);
+          // Note: Adjust string length here if needed; here we use a fixed length of 30.
+          const baseStr = generateRandomString(31, 31);
           const { deviatedStr, deviationCount } = createDeviations(baseStr);
           const correctAnswer =
             deviationCount >= 3 ? "3+" : deviationCount.toString();
-
           const baseStrOneLine = baseStr;
           const deviatedStrOneLine = deviatedStr;
 
@@ -193,21 +170,13 @@
                 <div class="col-6" style="padding-right: 6px;">
                   <!-- Left column: right-aligned -->
                   <pre class="monocolumn monocolumn-${i}" style="text-align: right;">${escapeHtml(
-                    baseStrOneLine
-                  )}</pre>
+            baseStrOneLine
+          )}</pre>
                 </div>
                 <div class="col-6" style="padding-left: 6px;">
                   <pre class="monocolumn monocolumn-${i}">${escapeHtml(
-                    deviatedStrOneLine
-                  )}</pre>
-                </div>
-              </div>
-              <!-- Touchpad area for horizontal scrolling -->
-              <div class="row">
-                <div class="col-12">
-                  <div class="touchpad">
-                    <div class="touchpad-inner touchpad-inner-${i}"></div>
-                  </div>
+            deviatedStrOneLine
+          )}</pre>
                 </div>
               </div>
               <div class="row mt-2">
@@ -228,53 +197,41 @@
           </div>
           `);
           $container.append($card);
-          $(`.touchpad-inner-${i}`).width($(`.monocolumn-${i}`)[0].scrollWidth * 2 - 70)
         }
 
-        // Synchronize horizontal scrolling among the character containers and the touchpad.
-        function syncScroll($element, selector) {
-          const $question = $element.closest(".question");
-          const scrollLeft = $element.scrollLeft();
-          // Use requestAnimationFrame for smoother updates.
+        // --- Synchronize Horizontal Scrolling ---
+        // When a scroll event occurs on any monocolumn, synchronize all within the same question.
+        $(document).on("scroll", ".question .monocolumn", function () {
+          const $this = $(this);
+          const scrollLeft = $this.scrollLeft();
           window.requestAnimationFrame(function () {
-            $question.find(selector).not($element).scrollLeft(scrollLeft);
+            $this
+              .closest(".question")
+              .find(".monocolumn")
+              .not($this)
+              .each(function () {
+                this.scrollLeft = scrollLeft;
+              });
           });
-        }
-
-        // When scrolling in a monocolumn, update the touchpad.
-        $(document).on(
-          "scroll touchmove",
-          ".question .monocolumn",
-          function () {
-            syncScroll($(this), ".touchpad, .monocolumn");
-          }
-        );
-
-        // When scrolling in the touchpad, update the monocolumns.
-        $(document).on("scroll touchmove", ".question .touchpad", function () {
-          syncScroll($(this), ".monocolumn, .touchpad");
         });
 
-        // Handle answer selection.
+        // --- Answer Selection Handling ---
         $(document).on("click", ".answer-btn", function () {
           const $this = $(this);
           $this.closest(".question").find(".answer-btn").removeClass("active");
           $this.addClass("active");
         });
 
-        // On submission, evaluate answers and show the result in a Bootstrap modal.
+        // --- Submission Handling ---
         $("#submitBtn").click(function () {
           $("html, body").animate({ scrollTop: 0 }, "fast");
           let correctCount = 0;
-
           $(".question").each(function () {
-            const $question = $(this);
-            const correct = $question.data("correct");
-            const $userSelected = $question.find(".answer-btn.active");
-            const $correctBtn = $question.find(
-              `.answer-btn[data-value="${correct}"]`
-            );
-
+            const $q = $(this);
+            const correct = $q.data("correct");
+            const actual = $q.data("actual");
+            const $userSelected = $q.find(".answer-btn.active");
+            const $correctBtn = $q.find(`.answer-btn[data-value="${correct}"]`);
             if ($userSelected.length) {
               const userAnswer = $userSelected.data("value");
               if (userAnswer === correct) {
@@ -295,12 +252,14 @@
                 .removeClass("btn-outline-primary")
                 .addClass("btn-success");
             }
-            $question.find(".answer-btn").removeClass("active");
+            $q.find(".answer-btn").removeClass("active");
+            // If the correct answer is "3+", also append the actual deviation count.
+            if (correct === "3+") {
+              $correctBtn.append(" (actual: " + actual + ")");
+            }
           });
-
           $(".answer-btn").prop("disabled", true);
           $(this).prop("disabled", true);
-
           const percentage = Math.round((correctCount / numQuestions) * 100);
           const resultMsg = `You answered ${correctCount}/${numQuestions} correctly (${percentage}%).`;
           $("#resultModal .modal-body").text(resultMsg);
