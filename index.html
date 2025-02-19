@@ -17,7 +17,7 @@
       rel="stylesheet"
     />
     <style>
-      /* Character containers (pre elements) – reduced height, with light borders */
+      /* Character containers with light borders */
       .monocolumn {
         font-family: "Roboto Mono", "Courier New", monospace;
         font-size: 1rem;
@@ -26,7 +26,7 @@
         padding: 0.25rem;
         overflow-x: auto;
         height: 2.5rem;
-        border: 1px solid #ccc; /* light border */
+        border: 1px solid #ccc;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior-x: none;
       }
@@ -124,14 +124,19 @@
             .replace(/'/g, "&#39;");
         }
 
+        /**
+         * Create deviations with these probabilities:
+         * - 80% chance: random count from 0 to 3.
+         * - 20% chance: random count from 4 to 6.
+         */
         function createDeviations(baseStr) {
           const len = baseStr.length;
           let deviationCount;
           const r = Math.random();
           if (r < 0.8) {
-            deviationCount = Math.floor(Math.random() * 3); // 0,1,or2
+            deviationCount = Math.floor(Math.random() * 4); // 0, 1, 2, or 3
           } else {
-            deviationCount = 3 + Math.floor(Math.random() * 3); // 3,4,or5
+            deviationCount = 4 + Math.floor(Math.random() * 3); // 4, 5, or 6
           }
           let rightArr = baseStr.split("");
           let indicesChanged = [];
@@ -154,47 +159,57 @@
 
         // --- Generate Questions ---
         for (let i = 1; i <= numQuestions; i++) {
-          // Note: Adjust string length here if needed; here we use a fixed length of 30.
+          // Here we generate strings of fixed length 31 (adjust as needed)
           const baseStr = generateRandomString(31, 31);
           const { deviatedStr, deviationCount } = createDeviations(baseStr);
-          const correctAnswer =
-            deviationCount >= 3 ? "3+" : deviationCount.toString();
+          // Determine correct answer:
+          // If deviationCount >= 4, answer is "4+"; if exactly 3 then "3"; else the actual count.
+          let correctAnswer;
+          if (deviationCount >= 4) {
+            correctAnswer = "4+";
+          } else {
+            correctAnswer = deviationCount.toString();
+          }
           const baseStrOneLine = baseStr;
           const deviatedStrOneLine = deviatedStr;
 
           const $card = $(`
-          <div class="card mb-3 question" data-correct="${correctAnswer}" data-actual="${deviationCount}">
-            <div class="card-body">
-              <h5 class="card-title">Question ${i}</h5>
-              <div class="row mb-2">
-                <div class="col-6" style="padding-right: 6px;">
-                  <!-- Left column: right-aligned -->
-                  <pre class="monocolumn monocolumn-${i}" style="text-align: right;">${escapeHtml(
+            <div class="card mb-3 question" data-correct="${correctAnswer}" data-actual="${deviationCount}">
+              <div class="card-body">
+                <h5 class="card-title">Question ${i}</h5>
+                <div class="row mb-2">
+                  <div class="col-6" style="padding-right: 6px;">
+                    <!-- Left column: right-aligned -->
+                    <pre class="monocolumn monocolumn-${i}" style="text-align: right;">${escapeHtml(
             baseStrOneLine
           )}</pre>
-                </div>
-                <div class="col-6" style="padding-left: 6px;">
-                  <pre class="monocolumn monocolumn-${i}">${escapeHtml(
+                  </div>
+                  <div class="col-6" style="padding-left: 6px;">
+                    <pre class="monocolumn monocolumn-${i}">${escapeHtml(
             deviatedStrOneLine
           )}</pre>
+                  </div>
                 </div>
-              </div>
-              <div class="row mt-2">
-                <div class="col-3 p-1">
-                  <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="0">0</button>
-                </div>
-                <div class="col-3 p-1">
-                  <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="1">1</button>
-                </div>
-                <div class="col-3 p-1">
-                  <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="2">2</button>
-                </div>
-                <div class="col-3 p-1">
-                  <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="3+">3+</button>
+                <!-- Answer choices row with 5 equal-width columns -->
+                <div class="row mt-2">
+                  <div class="col p-1">
+                    <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="0">0</button>
+                  </div>
+                  <div class="col p-1">
+                    <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="1">1</button>
+                  </div>
+                  <div class="col p-1">
+                    <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="2">2</button>
+                  </div>
+                  <div class="col p-1">
+                    <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="3">3</button>
+                  </div>
+                  <div class="col p-1">
+                    <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="4+">4+</button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
           `);
           $container.append($card);
         }
@@ -253,8 +268,8 @@
                 .addClass("btn-success");
             }
             $q.find(".answer-btn").removeClass("active");
-            // If the correct answer is "3+", also append the actual deviation count.
-            if (correct === "3+") {
+            // If correct answer is "4+", append actual deviation count.
+            if (correct === "4+") {
               $correctBtn.append(" (actual: " + actual + ")");
             }
           });
