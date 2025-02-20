@@ -39,9 +39,15 @@
   <body>
     <div class="container my-4">
       <h1 class="mb-4 text-center">Deviation Scanning Test</h1>
+      <!-- Start Timer Button at the top -->
+      <div class="my-4">
+        <button id="startTimer" class="btn btn-info btn-lg btn-block">
+          Start Timer
+        </button>
+      </div>
       <!-- Questions will be inserted here -->
       <div id="questionsContainer"></div>
-      <!-- Submit Button -->
+      <!-- Submit Button at the bottom -->
       <div class="my-4">
         <button id="submitBtn" class="btn btn-primary btn-lg btn-block">
           Submit Answers
@@ -94,6 +100,7 @@
       $(document).ready(function () {
         const numQuestions = 30;
         const $container = $("#questionsContainer");
+        let startTime = null; // to record when the timer starts
 
         // --- Utility Functions ---
         function randomChar() {
@@ -159,11 +166,13 @@
 
         // --- Generate Questions ---
         for (let i = 1; i <= numQuestions; i++) {
-          // Here we generate strings of fixed length 31 (adjust as needed)
+          // Generate a string of fixed length 31.
           const baseStr = generateRandomString(31, 31);
           const { deviatedStr, deviationCount } = createDeviations(baseStr);
           // Determine correct answer:
-          // If deviationCount >= 4, answer is "4+"; if exactly 3 then "3"; else the actual count.
+          // If deviationCount >= 4, answer is "4+"
+          // If exactly 3, answer is "3"
+          // Otherwise, answer is the actual count.
           let correctAnswer;
           if (deviationCount >= 4) {
             correctAnswer = "4+";
@@ -190,7 +199,6 @@
           )}</pre>
                   </div>
                 </div>
-                <!-- Answer choices row with 5 equal-width columns -->
                 <div class="row mt-2">
                   <div class="col p-1">
                     <button type="button" class="btn btn-outline-primary btn-block answer-btn" data-value="0">0</button>
@@ -215,7 +223,6 @@
         }
 
         // --- Synchronize Horizontal Scrolling ---
-        // When a scroll event occurs on any monocolumn, synchronize all within the same question.
         $(document).on("scroll", ".question .monocolumn", function () {
           const $this = $(this);
           const scrollLeft = $this.scrollLeft();
@@ -235,6 +242,12 @@
           const $this = $(this);
           $this.closest(".question").find(".answer-btn").removeClass("active");
           $this.addClass("active");
+        });
+
+        // --- Timer Handling ---
+        $("#startTimer").click(function () {
+          startTime = new Date();
+          $(this).prop("disabled", true).text("Timer Started");
         });
 
         // --- Submission Handling ---
@@ -268,15 +281,31 @@
                 .addClass("btn-success");
             }
             $q.find(".answer-btn").removeClass("active");
-            // If correct answer is "4+", append actual deviation count.
+            // If the correct answer is "4+", append actual deviation count.
             if (correct === "4+") {
               $correctBtn.append(" (actual: " + actual + ")");
             }
           });
           $(".answer-btn").prop("disabled", true);
           $(this).prop("disabled", true);
+          let elapsedTime = "";
+          if (startTime) {
+            const endTime = new Date();
+            const timeDiff = endTime - startTime; // in ms
+            const totalSeconds = Math.round(timeDiff / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            // Format minutes and seconds with leading zeros if needed
+            const formattedTime =
+              (minutes < 10 ? "0" : "") +
+              minutes +
+              ":" +
+              (seconds < 10 ? "0" : "") +
+              seconds;
+            elapsedTime = " Time taken: " + formattedTime;
+          }
           const percentage = Math.round((correctCount / numQuestions) * 100);
-          const resultMsg = `You answered ${correctCount}/${numQuestions} correctly (${percentage}%).`;
+          const resultMsg = `You answered ${correctCount}/${numQuestions} correctly (${percentage}%).${elapsedTime}`;
           $("#resultModal .modal-body").text(resultMsg);
           $("#resultModal").modal("show");
         });
